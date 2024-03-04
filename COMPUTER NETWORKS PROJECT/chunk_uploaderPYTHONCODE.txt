@@ -1,0 +1,81 @@
+# chunk_uploader.py
+
+import os
+import json
+import socket
+import datetime
+
+UPLOAD_PORT = 5000  # Specify the upload port
+
+
+def create_chunks_directory():
+    directory_name = "chunks"
+    if not os.path.exists(directory_name):
+        os.makedirs(directory_name)
+
+
+def upload_chunk(chunk_name, client_socket):
+    try:
+        # Open the chunk file
+        file_path = os.path.join("chunks", chunk_name)
+        with open(file_path, "rb") as file:
+            chunk_data = file.read()
+
+        # Send the chunk data to the client
+        client_socket.sendall(chunk_data)
+
+        # Close the client socket
+        client_socket.close()
+
+        # Process the uploaded chunk data 
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] Uploaded chunk '{chunk_name}' to {client_socket.getpeername()[0]}")
+
+        return True
+
+    except Exception as e:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] Error occurred while uploading chunk '{chunk_name}':", str(e))
+        return False
+
+
+def listen_for_uploads():
+    try:
+        # Create the chunks directory
+        create_chunks_directory()
+
+        # Create a TCP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("", UPLOAD_PORT))
+        sock.listen(1)
+
+        while True:
+            # Accept a client connection
+            client_socket, addr = sock.accept()
+
+            # Receive the request message
+            request_data = client_socket.recv(4096)
+            request_message = request_data.decode()
+
+            # Parse the request message
+            try:
+                parsed_message = json.loads(request_message)
+                if "requested content" in parsed_message:
+                    chunk_name = parsed_message["requested content"]
+                    upload_chunk(chunk_name, client_socket)
+
+            except json.JSONDecodeError:
+                print("Error decoding request message:", request_message)
+
+    except Exception as e:
+        print("Error occurred while listening for uploads:", str(e))
+
+    finally:
+        # Close the socket
+        sock.close()
+
+
+# Entry point of the Chunk Uploader process
+if __name__ == "__main__":
+    listen_for_uploads()

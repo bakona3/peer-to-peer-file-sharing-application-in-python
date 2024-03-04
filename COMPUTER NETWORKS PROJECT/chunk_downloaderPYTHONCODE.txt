@@ -1,0 +1,69 @@
+# chunk_downloader.py
+
+import json
+import socket
+import datetime
+# Specify the path to the log file
+log_file_path = "download_upload_log.txt"
+
+# Get the current timestamp
+timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+# Prompt the user to enter the content name to download
+content_name = input("Enter the content name to download: ")
+
+# Prompt the user to enter the IP address of the peer
+peer_ip = input("Enter the IP address of the peer: ")
+
+# Open the log file in append mode
+with open(log_file_path, "a") as log_file:
+    # Write the log entry
+    log_entry = f"[{timestamp}] Downloaded chunk '{content_name}' from {peer_ip}\n"
+    log_file.write(log_entry)
+
+
+print("Log entry written to", log_file_path)
+def download_chunk(chunk_name, peer_ip):
+    try:
+        # Create a TCP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        # Connect to the peer's IP address
+        sock.connect((peer_ip, 5000))
+
+        # Prepare the JSON request message
+        request_message = json.dumps({"requested content": chunk_name})
+
+        # Send the request message
+        sock.sendall(request_message.encode())
+
+        # Receive the chunk data
+        chunk_data = b""
+        while True:
+            data = sock.recv(4096)
+            if not data:
+                break
+            chunk_data += data
+
+        # Close the socket
+        sock.close()
+
+        # Process the downloaded chunk data 
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] Successfully downloaded chunk '{chunk_name}' from {peer_ip}")
+
+        return chunk_data
+
+    except Exception as e:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{timestamp}] Error occurred while downloading chunk '{chunk_name}' from {peer_ip}:", str(e))
+        return None
+
+# Entry point of the Chunk Downloader process
+if __name__ == "__main__":
+    content_name = input("Enter the content name to download: ")
+    peer_ip = input("Enter the IP address of the peer: ")
+    downloaded_chunk = download_chunk(content_name, peer_ip)
+    if downloaded_chunk is None:
+        # Display error dialog or handle the error 
+        print("Download error occurred.")

@@ -1,0 +1,57 @@
+# chunk_announcer.py
+
+import os
+import json
+import time
+import socket
+
+CHUNK_SIZE = 1024  # Specify the chunk size (in bytes)
+BROADCAST_IP = "255.255.255.255"  # Specify the broadcast IP address
+BROADCAST_PORT = 5001  # Specify the broadcast port
+
+def divide_file_into_chunks(file_path):
+    # Read the file and divide it into chunks
+    with open(file_path, "rb") as file:
+        file_data = file.read()
+    file_size = len(file_data)
+    num_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
+    chunks = []
+    for i in range(num_chunks):
+        chunk = file_data[i * CHUNK_SIZE: (i + 1) * CHUNK_SIZE]
+        chunks.append(chunk)
+    return chunks
+
+def send_chunk_announcements(file_directory):
+    file_names = os.listdir(file_directory)
+    chunks_dict = {}
+    for file_name in file_names:
+        file_path = os.path.join(file_directory, file_name)
+        chunks = divide_file_into_chunks(file_path)
+        chunks_dict[file_name] = chunks
+
+    while True:
+        try:
+            # Create a UDP socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+            # Prepare the JSON message
+            message = json.dumps({"chunks": list(chunks_dict.keys())})
+
+            # Send the broadcast message
+            sock.sendto(message.encode(), (BROADCAST_IP, BROADCAST_PORT))
+            print("Announcing hosted chunks:", message)
+
+            # Close the socket
+            sock.close()
+
+        except Exception as e:
+            print("Error occurred while sending chunk announcements:", str(e))
+
+        # Wait for 1 minute before sending the next announcement
+        time.sleep(60)
+
+# Entry point of the Chunk Announcer process
+if __name__ == "__main__":
+    file_directory = input("Enter the directory path containing the file to be hosted: ")
+    send_chunk_announcements(file_directory)

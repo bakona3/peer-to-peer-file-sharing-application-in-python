@@ -1,0 +1,46 @@
+# chunk_discovery.py
+
+import json
+import socket
+import datetime
+
+BROADCAST_IP = "255.255.255.255"  # Specify the broadcast IP address
+BROADCAST_PORT = 5001  # Specify the broadcast port
+
+
+def listen_for_chunk_announcements():
+    try:
+        # Create a UDP socket
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("", BROADCAST_PORT))
+
+        while True:
+            # Receive a broadcast message
+            data, addr = sock.recvfrom(4096)
+            message = data.decode()
+
+            # Parse the received message
+            try:
+                parsed_message = json.loads(message)
+                if "chunks" in parsed_message:
+                    chunks = parsed_message["chunks"]
+                    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    print(f"[{timestamp}] Received chunk announcements:", chunks)
+                    # Handle the received chunk announcements
+               
+
+            except json.JSONDecodeError:
+                print("Error decoding received message:", message)
+
+    except Exception as e:
+        print("Error occurred while listening for chunk announcements:", str(e))
+
+    finally:
+        # Close the socket
+        sock.close()
+
+
+# Entry point of the Chunk Discovery process
+if __name__ == "__main__":
+    listen_for_chunk_announcements()
